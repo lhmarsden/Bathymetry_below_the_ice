@@ -8,10 +8,7 @@ import sys
 # Traverse THREDDS server, isolate 'N' for Greenland.
 url = 'https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/15s/15s_bed_elev_netcdf/ETOPO_2022_v1_15s_N75W030_bed.nc'
 
-#ds = xr.open_dataset(url)
-#ds.to_netcdf('test.nc')
-
-ds = xr.open_dataset('test.nc')
+ds = xr.open_dataset(url)
 
 bathymetry = ds['z']
 
