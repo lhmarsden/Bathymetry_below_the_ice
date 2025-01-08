@@ -5,20 +5,30 @@ import numpy as np
 import cmocean
 import cartopy.crs as ccrs
 from siphon.catalog import TDSCatalog
+from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+from matplotlib import ticker as mticker
 
 # Setting up the figure and related variables
 
 # Set up the map projection (you can choose a different projection if needed)
 projection = ccrs.SouthPolarStereo()
+transform = ccrs.PlateCarree()
 
 # Create a figure and axis
 fig, ax = plt.subplots(subplot_kw={'projection': projection}, figsize=(30, 25))
 
 # Geospatial range to plot
-lat_min = -80
-lat_max = -70
-lon_min = 30
-lon_max = 80
+# Full range
+lat_min = -90
+lat_max = -57
+lon_min = -180
+lon_max = 180
+# Zoom
+# lat_min = -80
+# lat_max = -70
+# lon_min = 0
+# lon_max = 60
+
 # Elevation range for colour scale
 vmax = 3000
 vmin = vmax * -1
@@ -46,35 +56,43 @@ n=0
 for dataset in catalog.datasets.values():
     if 'ETOPO_2022_v1_15s_S' in dataset.name:
         n=n+1
-        print(n)
+        print(f"Processing dataset {n}: {dataset.name}")
         ds = xr.open_dataset(dataset.access_urls['OPENDAP'])
         bathymetry = ds['z']
-
-        # Selecting data only within geospatial limits specified
-        bathymetry_zoomed = bathymetry.sel(lat=slice(lat_min, lat_max), lon=slice(lon_min, lon_max))
-        # Check if there is data in the subset
-        if bathymetry_zoomed.size == 0:
-            print("No data in the specified range for file")
-            continue # Skip this file and move to the next one
-        else:
-            bathymetry = bathymetry_zoomed
 
         # Select every nth sample for faster resampling
         bathymetry_resampled = bathymetry.isel(
             lat=slice(None, None, sampling_factor),
             lon=slice(None, None, sampling_factor)
         )
+
+        # Selecting data only within geospatial limits specified
+        bathymetry_resampled = bathymetry_resampled.sel(lat=slice(lat_min, lat_max), lon=slice(lon_min, lon_max))
+        if bathymetry_resampled.size == 0:
+            print("No data in the specified range for this file.")
+            continue  # Skip this file and move to the next one
+
         # Plot tile
-        im =  bathymetry_resampled.plot(cmap=cmocean.cm.topo, vmin=vmin, vmax=vmax, ax=ax, transform=ccrs.PlateCarree(), add_colorbar=False)
+        im =  bathymetry_resampled.plot(cmap=cmocean.cm.topo, vmin=vmin, vmax=vmax, ax=ax, transform=transform, add_colorbar=False)
         # Plot contours
         bathymetry_resampled.plot.contour(levels=contour_levels, colors='black', linewidths=0.1)
 
 # Add labels, title, colorbar, etc. as needed
-ax.set_title('Bathymetry Comparison')
-#ax.set_xlabel('Longitude')
-#ax.set_ylabel('Latitude')
+ax.set_title('Bathymetry of Antarctica below the ice')
 
-ax.set_extent([-180, 180, -90, -57], ccrs.PlateCarree())
+# Configure gridlines
+gl = ax.gridlines(
+    crs=transform, draw_labels=True, linewidth=0.5,
+    color='gray', alpha=0.7, linestyle='--'
+)
+gl.ylocator = mticker.AutoLocator()
+gl.xlocator = mticker.AutoLocator()
+gl.xformatter = LONGITUDE_FORMATTER
+gl.yformatter = LATITUDE_FORMATTER
+gl.xlabel_style = {'size': 10, 'color': 'black'}
+gl.ylabel_style = {'size': 10, 'color': 'black'}
+
+ax.set_extent([lon_min, lon_max, lat_min, lat_max], transform)
 
 # Create a single colorbar for both plots
 cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.1)

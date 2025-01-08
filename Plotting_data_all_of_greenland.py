@@ -7,7 +7,6 @@ import cartopy.crs as ccrs
 from siphon.catalog import TDSCatalog
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from matplotlib import ticker as mticker
-from matplotlib.patches import PathPatch
 
 # Set up the map projection
 projection = ccrs.NorthPolarStereo(central_longitude=-45)
