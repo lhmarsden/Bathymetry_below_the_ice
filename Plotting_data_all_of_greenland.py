@@ -14,10 +14,19 @@ projection = ccrs.NorthPolarStereo()
 # Create a figure and axis
 fig, ax = plt.subplots(subplot_kw={'projection': projection}, figsize=(35, 10))
 
+# Geospatial range to plot
+lat_min = 72
+lat_max = 77
+lon_min = -25
+lon_max = -16
+# Elevation range for colour scale
 vmax = 3000
 vmin = vmax * -1
+# Contour interval
 contour_interval = 500
 contour_levels = np.arange(vmin, vmax + contour_interval, contour_interval)
+# Plot only every nth sample in both lat and lon to speed up processing
+sampling_factor = 10
 
 # Traversing the THREDDS server
 catalog_url = 'https://www.ngdc.noaa.gov/thredds/catalog/global/ETOPO2022/15s/15s_bed_elev_netcdf/catalog.xml'
@@ -40,7 +49,16 @@ for dataset in catalog.datasets.values():
         print(n)
         ds = xr.open_dataset(dataset.access_urls['OPENDAP'])
         bathymetry = ds['z']
-        sampling_factor = 10
+
+        # Selecting data only within geospatial limits specified
+        bathymetry_zoomed = bathymetry.sel(lat=slice(lat_min, lat_max), lon=slice(lon_min, lon_max))
+        # Check if there is data in the subset
+        if bathymetry_zoomed.size == 0:
+            print("No data in the specified range for file")
+            continue # Skip this file and move to the next one
+        else:
+            bathymetry = bathymetry_zoomed
+
         bathymetry_resampled = bathymetry.isel(
             lat=slice(None, None, sampling_factor),
             lon=slice(None, None, sampling_factor)
@@ -60,6 +78,6 @@ cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.1)
 cbar.set_label('Bathymetry (meters)')
 
 # Show the plot
-plt.savefig('/home/lukem/private_documents/Plotting_data_videos/Antarctic_topography_below_ice/greenland.png', dpi=500)
+plt.savefig('greenland.png', dpi=500)
 
 plt.show()
